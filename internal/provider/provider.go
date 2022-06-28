@@ -1,10 +1,8 @@
-package drone
+package provider
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/drone/drone-go/drone"
@@ -28,60 +26,83 @@ func init() {
 	}
 }
 
-func Provider() *schema.Provider {
-	return &schema.Provider{
-		Schema: map[string]*schema.Schema{
-			"server": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The Drone servers url, It must be provided, but can also be sourced from the `DRONE_SERVER` environment variable.",
-				DefaultFunc: schema.EnvDefaultFunc("DRONE_SERVER", nil),
+func New(version string) func() *schema.Provider {
+	return func() *schema.Provider {
+		p := &schema.Provider{
+			Schema: map[string]*schema.Schema{
+				"server": {
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "The Drone servers url, It must be provided, but can also be sourced from the `DRONE_SERVER` environment variable.",
+					DefaultFunc: schema.EnvDefaultFunc("DRONE_SERVER", nil),
+				},
+				"token": {
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "The Drone servers api token, It must be provided, but can also be sourced from the `DRONE_TOKEN` environment variable.",
+					DefaultFunc: schema.EnvDefaultFunc("DRONE_TOKEN", nil),
+				},
 			},
-			"token": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The Drone servers api token, It must be provided, but can also be sourced from the `DRONE_TOKEN` environment variable.",
-				DefaultFunc: schema.EnvDefaultFunc("DRONE_TOKEN", nil),
+			ResourcesMap: map[string]*schema.Resource{
+				"drone_repo":      resourceRepo(),
+				"drone_secret":    resourceSecret(),
+				"drone_orgsecret": resourceOrgSecret(),
+				"drone_user":      resourceUser(),
+				"drone_cron":      resourceCron(),
 			},
-		},
-		ResourcesMap: map[string]*schema.Resource{
-			"drone_repo":      resourceRepo(),
-			"drone_secret":    resourceSecret(),
-			"drone_orgsecret": resourceOrgSecret(),
-			"drone_user":      resourceUser(),
-			"drone_cron":      resourceCron(),
-		},
-		ConfigureContextFunc: providerConfigureFunc,
+		}
+
+		p.ConfigureContextFunc = configure(version, p)
+
+		return p
 	}
 }
 
-func providerConfigureFunc(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	config := new(oauth2.Config)
+func configure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	return func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		server := data.Get("server").(string)
+		token := data.Get("token").(string)
 
-	// certs := syscerts.SystemRootsPool()
-	tlsConfig := &tls.Config{
-		// RootCAs:            certs,
-		InsecureSkipVerify: false,
+		oauth2Conf := &oauth2.Config{}
+		httpClient := oauth2Conf.Client(ctx, &oauth2.Token{
+			AccessToken: token,
+		})
+
+		droneClient := drone.NewClient(server, httpClient)
+
+		if _, err := droneClient.Self(); err != nil {
+			return nil, diag.Errorf("drone client failed: %s", err)
+		}
+
+		return droneClient, nil
 	}
-
-	auther := config.Client(
-		oauth2.NoContext,
-		&oauth2.Token{
-			AccessToken: data.Get("token").(string),
-		},
-	)
-
-	trans, _ := auther.Transport.(*oauth2.Transport)
-	trans.Base = &http.Transport{
-		TLSClientConfig: tlsConfig,
-		Proxy:           http.ProxyFromEnvironment,
-	}
-
-	client := drone.NewClient(data.Get("server").(string), auther)
-
-	if _, err := client.Self(); err != nil {
-		return nil, diag.Errorf("drone client failed: %s", err)
-	}
-
-	return client, diag.Diagnostics{}
 }
+
+// func configure(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+// 	config := new(oauth2.Config)
+
+// 	tlsConfig := &tls.Config{
+// 		InsecureSkipVerify: false,
+// 	}
+
+// 	auther := config.Client(
+// 		oauth2.NoContext,
+// 		&oauth2.Token{
+// 			AccessToken: data.Get("token").(string),
+// 		},
+// 	)
+
+// 	trans, _ := auther.Transport.(*oauth2.Transport)
+// 	trans.Base = &http.Transport{
+// 		TLSClientConfig: tlsConfig,
+// 		Proxy:           http.ProxyFromEnvironment,
+// 	}
+
+// 	client := drone.NewClient(data.Get("server").(string), auther)
+
+// 	if _, err := client.Self(); err != nil {
+// 		return nil, diag.Errorf("drone client failed: %s", err)
+// 	}
+
+// 	return client, diag.Diagnostics{}
+// }

@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"context"
@@ -84,7 +84,7 @@ func resourceCron() *schema.Resource {
 	}
 }
 
-func resourceCronCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCronCreate(_ context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(drone.Client)
 
 	owner, repo, err := utils.ParseRepo(data.Get("repository").(string))
@@ -102,7 +102,7 @@ func resourceCronCreate(ctx context.Context, data *schema.ResourceData, meta int
 	return readCron(data, cron, owner, repo, err)
 }
 
-func resourceCronRead(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCronRead(_ context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(drone.Client)
 
 	owner, repo, err := utils.ParseRepo(data.Get("repository").(string))
@@ -119,7 +119,7 @@ func resourceCronRead(ctx context.Context, data *schema.ResourceData, meta inter
 	return readCron(data, cron, owner, repo, err)
 }
 
-func resourceCronUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCronUpdate(_ context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(drone.Client)
 
 	owner, repo, err := utils.ParseRepo(data.Get("repository").(string))
@@ -133,7 +133,7 @@ func resourceCronUpdate(ctx context.Context, data *schema.ResourceData, meta int
 	return readCron(data, cron, owner, repo, err)
 }
 
-func resourceCronDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceCronDelete(_ context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(drone.Client)
 
 	owner, repo, err := utils.ParseRepo(data.Get("repository").(string))

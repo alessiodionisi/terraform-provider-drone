@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"fmt"
@@ -31,9 +31,9 @@ func testSecretConfigBasic(user, repo, name, value string) string {
 
 func TestSecret(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testProviders,
-		CheckDestroy: testSecretDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: providerFactories,
+		CheckDestroy:      testSecretDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testSecretConfigBasic(
@@ -65,7 +65,12 @@ func TestSecret(t *testing.T) {
 }
 
 func testSecretDestroy(state *terraform.State) error {
-	client := testProvider.Meta().(drone.Client)
+	provider, err := providerFactories["drone"]()
+	if err != nil {
+		return err
+	}
+
+	client := provider.Meta().(drone.Client)
 
 	for _, resource := range state.RootModule().Resources {
 		if resource.Type != "drone_secret" {

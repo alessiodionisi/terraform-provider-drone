@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"fmt"
@@ -20,9 +20,9 @@ resource "drone_user" "octocat" {
 
 func TestUser(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testProviders,
-		CheckDestroy: testUserDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: providerFactories,
+		CheckDestroy:      testUserDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testUserConfig,
@@ -63,7 +63,12 @@ func TestUser(t *testing.T) {
 }
 
 func testUserDestroy(state *terraform.State) error {
-	client := testProvider.Meta().(drone.Client)
+	provider, err := providerFactories["drone"]()
+	if err != nil {
+		return err
+	}
+
+	client := provider.Meta().(drone.Client)
 
 	for _, resource := range state.RootModule().Resources {
 		if resource.Type != "drone_user" {

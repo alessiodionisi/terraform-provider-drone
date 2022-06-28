@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"os"
@@ -9,25 +9,18 @@ import (
 
 var (
 	testDroneUser string = os.Getenv("DRONE_USER")
-	testProviders map[string]*schema.Provider
-	testProvider  *schema.Provider
 )
 
-func init() {
-	testProvider = Provider()
-	testProviders = map[string]*schema.Provider{
-		"drone": testProvider,
-	}
+var providerFactories = map[string]func() (*schema.Provider, error){
+	"drone": func() (*schema.Provider, error) {
+		return New("dev")(), nil
+	},
 }
 
 func TestProvider(t *testing.T) {
-	if err := Provider().InternalValidate(); err != nil {
+	if err := New("dev")().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
-}
-
-func TestProvider_impl(t *testing.T) {
-	var _ *schema.Provider = Provider()
 }
 
 func testAccPreCheck(t *testing.T) {

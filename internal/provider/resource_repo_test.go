@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"fmt"
@@ -20,9 +20,9 @@ func testRepoConfigBasic(user, repo string) string {
 
 func TestRepo(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testProviders,
-		CheckDestroy: testRepoDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: providerFactories,
+		CheckDestroy:      testRepoDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testRepoConfigBasic(testDroneUser, "hook-test"),
@@ -59,7 +59,12 @@ func TestRepo(t *testing.T) {
 }
 
 func testRepoDestroy(state *terraform.State) error {
-	client := testProvider.Meta().(drone.Client)
+	provider, err := providerFactories["drone"]()
+	if err != nil {
+		return err
+	}
+
+	client := provider.Meta().(drone.Client)
 
 	for _, resource := range state.RootModule().Resources {
 		if resource.Type != "drone_repo" {

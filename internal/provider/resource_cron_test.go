@@ -1,4 +1,4 @@
-package drone
+package provider
 
 import (
 	"fmt"
@@ -10,47 +10,20 @@ import (
 	"github.com/mavimo/terraform-provider-drone/internal/provider/utils"
 )
 
-func testCronConfigBasic(user, repo, name string) string {
-	return fmt.Sprintf(`
-    resource "drone_repo" "repo" {
-      repository = "%s/%s"
-    }
-
-    resource "drone_cron" "cron" {
-      repository = "${drone_repo.repo.repository}"
-      name       = "%s"
-			expr       = "@monthly"
-			event      = "push"
-    }
-    `,
-		user,
-		repo,
-		name,
-	)
-}
-
-func TestCron(t *testing.T) {
-	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testProviders,
-		CheckDestroy: testCronDestroy,
+func TestAccResourceCron(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: providerFactories,
+		CheckDestroy:      testAccResourceCronCheckDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testCronConfigBasic(
-					testDroneUser,
-					"hook-test",
-					"cron_job",
-				),
+				Config: testAccResourceCron(testDroneUser, "hook-test", "cron_job"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
-						"drone_cron.cron",
-						"repository",
-						fmt.Sprintf("%s/hook-test", testDroneUser),
+						"drone_cron.cron", "repository", fmt.Sprintf("%s/hook-test", testDroneUser),
 					),
 					resource.TestCheckResourceAttr(
-						"drone_cron.cron",
-						"name",
-						"cron_job",
+						"drone_cron.cron", "name", "cron_job",
 					),
 				),
 			},
@@ -58,8 +31,28 @@ func TestCron(t *testing.T) {
 	})
 }
 
-func testCronDestroy(state *terraform.State) error {
-	client := testProvider.Meta().(drone.Client)
+func testAccResourceCron(user, repo, name string) string {
+	return fmt.Sprintf(`
+resource "drone_repo" "repo" {
+	repository = "%s/%s"
+}
+
+resource "drone_cron" "cron" {
+	repository = "${drone_repo.repo.repository}"
+	name = "%s"
+	expr = "@monthly"
+	event = "push"
+}
+`, user, repo, name)
+}
+
+func testAccResourceCronCheckDestroy(state *terraform.State) error {
+	provider, err := providerFactories["drone"]()
+	if err != nil {
+		return err
+	}
+
+	client := provider.Meta().(drone.Client)
 
 	for _, resource := range state.RootModule().Resources {
 		if resource.Type != "drone_cron" {

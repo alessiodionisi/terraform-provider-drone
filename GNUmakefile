@@ -14,7 +14,7 @@ build:
 	go build -o ${BINARY}
 
 release:
-	goreleaser release --rm-dist --snapshot --skip-publish  --skip-sign
+	goreleaser release --rm-dist --snapshot --skip-publish --skip-sign
 
 docs:
 	go generate

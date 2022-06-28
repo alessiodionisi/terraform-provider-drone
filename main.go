@@ -3,9 +3,8 @@ package main
 import (
 	"flag"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	drone "github.com/mavimo/terraform-provider-drone/internal/provider"
+	"github.com/mavimo/terraform-provider-drone/internal/provider"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -35,14 +34,9 @@ func main() {
 	flag.Parse()
 
 	opts := &plugin.ServeOpts{
-		ProviderFunc: func() *schema.Provider {
-			return drone.Provider()
-		},
-	}
-
-	if debugMode {
-		opts.Debug = true
-		opts.ProviderAddr = "registry.terraform.io/mavimo/drone"
+		Debug:        debugMode,
+		ProviderAddr: "registry.terraform.io/mavimo/drone",
+		ProviderFunc: provider.New(version),
 	}
 
 	plugin.Serve(opts)
